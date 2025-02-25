@@ -1,4 +1,4 @@
-# \<Project Name\> Scrum Team
+# PhotoApp TEAM 5 - Scrum Team
 ## Product Owner
 Edward Henriquez 
 ## Scrum Master
