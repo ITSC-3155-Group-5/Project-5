@@ -4,8 +4,7 @@ import {
   ImageList, ImageListItem
 } from '@mui/material';
 import './userPhotos.css';
-import fetchModel from "../../lib/fetchModelData";
-
+import axios from 'axios';
 
 /**
  * Define UserPhotos, a React componment of project #5
@@ -33,7 +32,8 @@ class UserPhotos extends React.Component {
   }
 
   handleUserChange(user_id){
-      fetchModel("/photosOfUser/" + user_id)
+      console.log("Getting photos...");
+      axios.get("/photosOfUser/" + user_id)
           .then((response) =>
           {
               this.setState({
@@ -41,7 +41,7 @@ class UserPhotos extends React.Component {
                   photos: response.data
               });
           });
-      fetchModel("/user/" + user_id)
+      axios.get("/user/" + user_id)
           .then((response) =>
           {
               const new_user = response.data;

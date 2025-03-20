@@ -6,7 +6,7 @@ import {
 }
 from '@mui/material';
 import './userList.css';
-import fetchModel from "../../lib/fetchModelData";
+import axios from 'axios';
 
 /**
  * Define UserList, a React component of project #5
@@ -41,7 +41,8 @@ handleUserChange(user_id){
 }
 
 handleUserListChange(){
-  fetchModel("/user/list")
+  console.log("Getting user/list...");
+  axios.get("/user/list")
       .then((response) =>
       {
           this.setState({
