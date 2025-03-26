@@ -56,7 +56,6 @@ class LoginRegister extends React.Component {
                 headers: {
                     'Content-Type': 'application/json',
                 }
-                
             })
             .then((response) =>
             {

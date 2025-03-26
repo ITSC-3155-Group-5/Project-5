@@ -31,7 +31,6 @@ class UserDetail extends React.Component {
     }
 
     handleUserChange(user_id){
-        console.log("Getting user id...");
         axios.get("/user/" + user_id)
             .then((response) =>
             {
