@@ -2,7 +2,7 @@
 ## Product Owner
 Edward Henriquez 
 ## Scrum Master
-Ethan Graham
+Ethan Graham 
 ## Developers
 - Connor Lewis
 - Harrison
