@@ -20,9 +20,10 @@ import LoginRegister from "./components/loginRegister/loginRegister";
 class PhotoShare extends React.Component {
   constructor(props) {
     super(props);
+    const savedUser = localStorage.getItem('user');
     this.state = {
       main_content: undefined,
-      user: undefined
+      user: savedUser ? JSON.parse(savedUser) : undefined // Restore user if available
     };
     this.changeMainContent = this.changeMainContent.bind(this);
     this.changeUser = this.changeUser.bind(this);
@@ -37,8 +38,31 @@ class PhotoShare extends React.Component {
 
   changeUser = (user) => {
     this.setState({user: user});
-    if (user === undefined) this.changeMainContent(undefined);
+    if (user === undefined) {
+      localStorage.removeItem('user'); // Clear user data on logout
+      this.changeMainContent(undefined);
+    } else {
+      localStorage.setItem('user', JSON.stringify(user)); // Save user data on login
+    }
   };
+
+  componentDidMount() {
+    this.serverCheckInterval = setInterval(() => {
+      fetch('/session', { method: 'GET', credentials: 'include' })
+        .then((response) => {
+          if (response.status !== 200) {
+            throw new Error('Server unavailable');
+          }
+        })
+        .catch(() => {
+          this.changeUser(undefined); // Log out the user if the server is unavailable
+        });
+    }, 5000); // Check every 5 seconds
+  }
+  
+  componentWillUnmount() {
+    clearInterval(this.serverCheckInterval); // Clear the interval when the component unmounts
+  }
 
   render() {
     return (
