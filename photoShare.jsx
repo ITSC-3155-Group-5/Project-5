@@ -1,3 +1,4 @@
+/* eslint-disable react/jsx-wrap-multilines, implicit-arrow-linebreak, react/jsx-curly-newline */
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {

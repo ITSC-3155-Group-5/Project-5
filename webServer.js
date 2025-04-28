@@ -1,3 +1,4 @@
+/* eslint-disable consistent-return */
 /**
  * This builds on the webServer of previous projects in that it exports the
  * current directory via webserver listing on a hard code (see portno below)
@@ -30,7 +31,7 @@
  *                      Each photo should have all the Comments on the Photo
  *                      (JSON format).
  */
-
+/* eslint-disable implicit-arrow-linebreak */
 const mongoose = require("mongoose");
 mongoose.Promise = require("bluebird");
 
@@ -510,6 +511,46 @@ app.get("/user/:id", function (request, response) {
         }
         return null;
       });
+});
+
+/**
+ * URL /user/:id [PUT] – update allowed user fields
+ */
+// eslint-disable-next-line consistent-return
+app.put("/user/:id", async (request, response) => {
+  if (hasNoUserSession(request, response)) return;
+
+  // Only these fields can be updated:
+  const allowed = [
+    "first_name",
+    "last_name",
+    "location",
+    "description",
+    "occupation",
+    "websiteUrl",
+    "themePreference"
+  ];
+  const updates = {};
+  allowed.forEach(field => {
+    if (request.body[field] !== undefined) {
+      updates[field] = request.body[field];
+    }
+  });
+
+  try {
+    const user = await User.findByIdAndUpdate(
+      request.params.id,
+      updates,
+      { new: true, runValidators: true }
+    );
+    if (!user) {
+      return response.status(404).send("User not found");
+    }
+    response.json(user);
+  } catch (err) {
+    console.error("Error in PUT /user/:id:", err);
+    response.status(400).json({ error: err.message });
+  }
 });
 
 /**
