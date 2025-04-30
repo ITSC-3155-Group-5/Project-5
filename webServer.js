@@ -1,3 +1,4 @@
+/* eslint-disable consistent-return */
 /**
  * This builds on the webServer of previous projects in that it exports the
  * current directory via webserver listing on a hard code (see portno below)
@@ -30,7 +31,7 @@
  *                      Each photo should have all the Comments on the Photo
  *                      (JSON format).
  */
-
+/* eslint-disable implicit-arrow-linebreak */
 const mongoose = require("mongoose");
 mongoose.Promise = require("bluebird");
 
@@ -214,7 +215,7 @@ app.post("/user", function (request, response) {
             })
             .then((user) => {
               request.session.user_id = user._id;
-              session.user_id = user._id;
+              request.session.user_id = user._id;
               response.end(JSON.stringify(user));
             })
             .catch(err1 => {
@@ -224,6 +225,61 @@ app.post("/user", function (request, response) {
       }
   });
 });
+
+app.post("/user/setDefaultProfilePic", async (request, response) => {
+  console.log("Mongoose connection state:", mongoose.connection.readyState);
+
+  const user_id = request.body.user_id;
+  if (!user_id) {
+    response.status(400).send("Missing user_id");
+    return;
+  }
+
+  let idObj;
+  try {
+    idObj = new mongoose.Types.ObjectId(user_id);
+  } catch (error) {
+    console.error("Invalid user_id format:", user_id);
+    response.status(400).send("Invalid user_id format");
+    return;
+  }
+
+  // Step 1: Check if the user exists
+  const user = await User.findById(idObj);
+
+  if (!user) {
+    console.log("No user found with this ID:", user_id);
+    response.status(404).send("User not found");
+    return;
+  }
+
+  console.log("User found:", user.first_name, user.last_name);
+
+  // Step 2: Update profilePic if needed
+  const result = await User.updateOne(
+    { _id: user._id },
+    { $set: { profilePic: "default_profile.jpg" } }
+  );
+
+  console.log("Update Result:", result);
+
+  if (result.matchedCount === 1) {
+    console.log("User was found.");
+  
+    // Check if the profilePic was actually changed
+    if (result.modifiedCount === 1) {
+      console.log("User profilePic was updated successfully.");
+    } else {
+      console.log("User already had the default profilePic. No update needed.");
+    }
+  
+  } else {
+    console.log("No user matched. Update did nothing.");
+  }
+
+  response.status(200).send();
+});
+
 
 /**
  * URL /photos/new - adds a new photo for the current user
@@ -336,7 +392,7 @@ app.post("/admin/login", function (request, response) {
       return;
     }
     request.session.user_id = user[0]._id;
-    session.user_id = user[0]._id;
+    request.session.user_id = user[0]._id;
     //session.user = user;
     //response.cookie('user',user);
     // We got the object - return it in JSON format.
@@ -344,15 +400,60 @@ app.post("/admin/login", function (request, response) {
   });
 });
 
+app.post("/profilePic", function (request, response) {
+  if (hasNoUserSession(request, response)) return;
+  
+  const user_id = getSessionUserID(request);
+  if (!user_id) {
+    console.error("Error in /profilePic: No user_id found in session");
+    response.status(400).send("user_id required");
+    return;
+  }
+
+  processFormBody(request, response, function (err) {
+    if (err || !request.file) {
+      console.error("Error processing form body or missing file:", err);
+      response.status(400).send("photo required");
+      return;
+    }
+
+    const timestamp = new Date().valueOf();
+    const filename = 'P' + String(timestamp) + request.file.originalname; // P = Profile pic
+
+    fs.writeFile("./images/" + filename, request.file.buffer, function (err1) {
+      if (err1) {
+        console.error("Error writing profile picture file:", err1);
+        response.status(500).send("error writing photo");
+        return;
+      }
+
+      User.updateOne(
+        { _id: new mongoose.Types.ObjectId(user_id) },
+        { $set: { profilePic: filename } }
+      )
+      .then(() => {
+        console.log("Successfully updated user's profile picture to", filename);
+        response.status(200).send();
+      })
+      .catch((err2) => {
+        console.error("Error updating user profilePic field:", err2);
+        response.status(500).send(JSON.stringify(err2));
+      });
+    });
+  });
+});
+
 /**
  * URL /admin/logout - clears user session
  */
 app.post("/admin/logout", function (request, response) {
-  //session.user = undefined;
-  //response.clearCookie('user');
-  request.session.destroy(() => {
-    session.user_id = undefined;
-    response.end();
+  request.session.destroy((err) => {
+    if (err) {
+      console.error("Error destroying session:", err);
+      response.status(500).send("Failed to log out.");
+    } else {
+      response.end();
+    }
   });
 });
 
@@ -413,6 +514,46 @@ app.get("/user/:id", function (request, response) {
 });
 
 /**
+ * URL /user/:id [PUT] – update allowed user fields
+ */
+// eslint-disable-next-line consistent-return
+app.put("/user/:id", async (request, response) => {
+  if (hasNoUserSession(request, response)) return;
+
+  // Only these fields can be updated:
+  const allowed = [
+    "first_name",
+    "last_name",
+    "location",
+    "description",
+    "occupation",
+    "websiteUrl",
+    "themePreference"
+  ];
+  const updates = {};
+  allowed.forEach(field => {
+    if (request.body[field] !== undefined) {
+      updates[field] = request.body[field];
+    }
+  });
+
+  try {
+    const user = await User.findByIdAndUpdate(
+      request.params.id,
+      updates,
+      { new: true, runValidators: true }
+    );
+    if (!user) {
+      return response.status(404).send("User not found");
+    }
+    response.json(user);
+  } catch (err) {
+    console.error("Error in PUT /user/:id:", err);
+    response.status(400).json({ error: err.message });
+  }
+});
+
+/**
  * URL /photosOfUser/:id - Returns the Photos for User (id).
  */
 app.get("/photosOfUser/:id", function (request, response) {
@@ -470,6 +611,16 @@ __v: 0,
         }
         return null;
       });
+});
+
+app.get("/session", function (request, response) {
+  if (!request.session.user_id) {
+    // No user logged in
+    response.status(401).send();
+  } else {
+    // User is logged in
+    response.status(200).send();
+  }
 });
 
 const server = app.listen(3000, function () {
